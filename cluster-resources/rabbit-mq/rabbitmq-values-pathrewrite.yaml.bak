@@ -1,0 +1,176 @@
+# RabbitMQ Configuration Values - Method 1: Advanced Path Rewriting
+# This file contains the Helm values for RabbitMQ deployment with subpath support
+# Using nginx ingress capture groups and advanced rewriting
+
+# Authentication
+auth:
+  username: ""
+  password: ""
+  # Enable RBAC
+  existingErlangSecret: ""
+  existingPasswordSecret: ""
+
+# Persistence
+persistence:
+  enabled: true
+  storageClass: ""
+  accessModes:
+    - ReadWriteOnce
+  size: 10Gi
+
+# Clustering
+clustering:
+  enabled: true
+  replicaCount: 2
+
+# Resource limits and requests
+resources:
+  limits:
+    cpu: 500m
+    memory: 500Mi
+  requests:
+    cpu: 250m
+    memory: 250Mi
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 5672
+  tlsPort: 5671
+  managerPort: 15672
+
+# Ingress configuration - Method 1: Advanced Nginx Rewriting with Capture Groups
+ingress:
+  enabled: true
+  ingressClassName: "nginx"
+  hostname: "api.aunlocked.com"
+  path: "/rabbitmq(/|$)(.*)"
+  pathType: Prefix
+  annotations:
+    # Advanced rewriting using regex capture groups
+    # $1 captures the trailing slash or end-of-string
+    # $2 captures everything after /rabbitmq/
+    nginx.ingress.kubernetes.io/rewrite-target: "/$2"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    
+    # Fix cookie paths for authentication
+    nginx.ingress.kubernetes.io/proxy-cookie-path: "/ /rabbitmq/"
+    
+    # Preserve original host header
+    nginx.ingress.kubernetes.io/upstream-vhost: "$host"
+    
+    # Additional headers for proper functionality
+    nginx.ingress.kubernetes.io/proxy-set-headers: "rabbitmq-coffee/custom-headers"
+    
+    # SSL settings
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    
+    # CORS and security headers
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "*"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
+
+  tls: false
+  # Additional paths for specific API endpoints (optional enhancement)
+  extraPaths: []
+  # - path: "/rabbitmq/api(/|$)(.*)"
+  #   pathType: Prefix
+  #   backend:
+  #     service:
+  #       name: rabbitmq-coffee
+  #       port:
+  #         name: http-stats
+
+# Metrics and monitoring
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: false
+  prometheusRule:
+    enabled: false
+
+# Security context
+podSecurityContext:
+  enabled: true
+  fsGroup: 1001
+
+containerSecurityContext:
+  enabled: true
+  runAsUser: 1001
+  runAsNonRoot: true
+  readOnlyRootFilesystem: false
+
+# Node affinity and tolerations
+affinity: {}
+nodeSelector: {}
+tolerations: []
+
+# Extra environment variables
+extraEnvVars: []
+
+# Plugins
+plugins: "rabbitmq_management rabbitmq_peer_discovery_k8s"
+
+# Community plugins
+communityPlugins: ""
+
+# Configuration
+configuration: |
+  ## Username and password
+  default_user = pedro
+  default_pass = CHANGEME
+  ## Clustering
+  cluster_formation.peer_discovery_backend = rabbit_peer_discovery_k8s
+  cluster_formation.k8s.host = kubernetes.default.svc.cluster.local
+  cluster_formation.k8s.address_type = hostname
+  cluster_formation.node_cleanup.interval = 30
+  cluster_formation.node_cleanup.only_log_warning = true
+  cluster_partition_handling = autoheal
+  ## Memory thresholds
+  vm_memory_high_watermark.absolute = 1GB
+  ## Disk thresholds
+  disk_free_limit.absolute = 2GB
+
+# =============================================================================
+# METHOD 1 EXPLANATION:
+# =============================================================================
+# 
+# This configuration uses regex capture groups to handle subpath routing:
+# 
+# 1. PATH PATTERN: "/rabbitmq(/|$)(.*)"
+#    - Matches "/rabbitmq" followed by either "/" or end-of-string
+#    - Captures everything after "/rabbitmq/" as group $2
+#    - Examples:
+#      * /rabbitmq/api/overview → $2 = api/overview
+#      * /rabbitmq/js/main.js → $2 = js/main.js
+#      * /rabbitmq/ → $2 = (empty)
+# 
+# 2. REWRITE TARGET: "/$2"
+#    - Rewrites the captured path to root
+#    - /rabbitmq/api/overview becomes /api/overview
+#    - /rabbitmq/js/main.js becomes /js/main.js
+# 
+# 3. COOKIE PATH FIXING:
+#    - proxy-cookie-path: "/ /rabbitmq/"
+#    - Ensures authentication cookies work correctly
+#    - Cookies set by RabbitMQ for "/" are modified to work with "/rabbitmq/"
+# 
+# 4. HOST HEADER PRESERVATION:
+#    - upstream-vhost: "$host"
+#    - Maintains the original hostname for RabbitMQ
+#    - Prevents issues with internal redirects
+# 
+# USAGE:
+# 1. Copy this file over rabbitmq-values.yaml
+# 2. Run: ./setup.sh
+# 3. Choose upgrade when prompted
+# 4. Access: http://api.aunlocked.com/rabbitmq
+# 
+# TROUBLESHOOTING:
+# - If assets don't load, check the browser network tab
+# - Ensure DNS points api.aunlocked.com to your ingress IP
+# - Check ingress controller logs for rewrite errors
+# - Verify the regex pattern is working with kubectl logs
+# 
+# =============================================================================

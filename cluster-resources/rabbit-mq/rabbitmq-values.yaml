@@ -1,0 +1,111 @@
+# RabbitMQ Configuration Values
+# This file contains the Helm values for RabbitMQ deployment
+
+# Authentication - Username in values, Password from secret
+auth:
+  # Username stored in values file
+  username: "rabbitmq-admin"
+  # Password will be loaded from Kubernetes secret
+  # password: ""
+  # Reference to existing Kubernetes secret containing password
+  existingPasswordSecret: "rabbitmq-credentials"
+  # Specify the key name in the secret (this is important!)
+  existingSecretPasswordKey: "rabbitmq-password"
+  # Enable RBAC
+  existingErlangSecret: ""
+
+# Persistence
+persistence:
+  enabled: true
+  storageClass: ""
+  accessModes:
+    - ReadWriteOnce
+  size: 10Gi
+
+# Clustering
+clustering:
+  enabled: true
+  replicaCount: 2
+
+# Resource limits and requests
+resources:
+  limits:
+    cpu: 500m
+    memory: 500Mi
+  requests:
+    cpu: 250m
+    memory: 250Mi
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 5672
+  tlsPort: 5671
+  managerPort: 15672
+
+# Ingress configuration
+ingress:
+  enabled: true
+  ingressClassName: "nginx"
+  hostname: "rabbitmq.aunlocked.com"
+  path: "/"
+  pathType: Prefix
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    # nginx.ingress.kubernetes.io/force-ssl-redirect: "false"
+
+  tls: false
+  # selfSigned: false
+  # extraHosts: []
+  # extraPaths: []
+  # extraTls: []
+
+# Metrics and monitoring
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: false
+  prometheusRule:
+    enabled: false
+
+# Security context
+podSecurityContext:
+  enabled: true
+  fsGroup: 1001
+
+containerSecurityContext:
+  enabled: true
+  runAsUser: 1001
+  runAsNonRoot: true
+  readOnlyRootFilesystem: false
+
+# Node affinity and tolerations
+affinity: {}
+nodeSelector: {}
+tolerations: []
+
+# Extra environment variables
+extraEnvVars: []
+
+# Plugins
+plugins: "rabbitmq_management rabbitmq_peer_discovery_k8s"
+
+# Community plugins
+communityPlugins: ""
+
+# Configuration
+configuration: |
+  ## Username and password
+  default_user = rabbitmq-admin
+  default_pass = CHANGEME
+  ## Clustering
+  cluster_formation.peer_discovery_backend = rabbit_peer_discovery_k8s
+  cluster_formation.k8s.host = kubernetes.default.svc.cluster.local
+  cluster_formation.k8s.address_type = hostname
+  cluster_formation.node_cleanup.interval = 30
+  cluster_formation.node_cleanup.only_log_warning = true
+  cluster_partition_handling = autoheal
+  ## Memory thresholds
+  vm_memory_high_watermark.absolute = 1GB
+  ## Disk thresholds
+  disk_free_limit.absolute = 2GB
