@@ -38,8 +38,9 @@ resources:
 
 # Service configuration
 service:
-  type: ClusterIP
+  type: NodePort  # Changed from ClusterIP for temporary external access
   port: 5672
+  nodePort: 30672  # Fixed port for consistent access
   tlsPort: 5671
   managerPort: 15672
 

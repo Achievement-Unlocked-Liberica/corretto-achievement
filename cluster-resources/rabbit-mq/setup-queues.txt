@@ -1,0 +1,20 @@
+# RabbitMQ Queue Configuration
+# 
+# This file contains a list of queues to be created in RabbitMQ.
+# Each line should contain one queue name.
+# Empty lines and lines starting with # are ignored.
+#
+# Queue naming conventions:
+# - Use lowercase with dots as separators
+# - Follow the pattern: <domain>.<entity>.<action>.queue
+# - Example: challenge.comment.created.queue
+#
+# These queues will be created with:
+# - durable: true (survive broker restart)
+# - auto_delete: false (not deleted when unused)
+# - arguments: {} (no special arguments)
+
+# Challenge-related queues
+challenge.comment.created.queue
+challenge.created.queue
+challenge.updated.queue

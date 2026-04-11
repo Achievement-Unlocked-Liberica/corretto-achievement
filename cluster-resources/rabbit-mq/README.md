@@ -17,6 +17,8 @@ Before running the setup script, ensure you have the following tools installed:
 - `rabbitmq-values.yaml`: Helm values configuration file for RabbitMQ
 - `rabbitmq-secret.yaml`: Kubernetes secret manifest for RabbitMQ password
 - `rabbitmq-values-pathrewrite.yaml.bak`: Alternative configuration for subpath routing
+- `initialize-queues.sh`: Script to initialize RabbitMQ queues from configuration file
+- `setup-queues.txt`: List of queues to create (one per line)
 - `README.md`: This documentation file
 
 ## Security Features
@@ -152,6 +154,75 @@ kubectl run rabbitmq-client --rm --tty -i --restart='Never' \
   --env RABBITMQ_PASSWORD=pedro \
   --command -- bash
 ```
+
+## Queue Initialization
+
+### Creating Queues from Configuration
+
+After deploying RabbitMQ, you can initialize queues using the `initialize-queues.sh` script:
+
+1. **Edit the queue list**:
+   - Open `setup-queues.txt`
+   - Add one queue name per line
+   - Lines starting with `#` are treated as comments
+
+   ```
+   # Challenge-related queues
+   challenge.comment.created.queue
+   challenge.created.queue
+   challenge.updated.queue
+   ```
+
+2. **Make the script executable**:
+   ```bash
+   chmod +x initialize-queues.sh
+   ```
+
+3. **Run the initialization script**:
+   ```bash
+   # Run with defaults (auto-detects password from Kubernetes secret)
+   ./initialize-queues.sh
+   
+   # Or specify credentials manually
+   ./initialize-queues.sh --username rabbitmq-admin --password pedro
+   
+   # Use custom queue file
+   ./initialize-queues.sh --file my-custom-queues.txt
+   
+   # Display all options
+   ./initialize-queues.sh --help
+   ```
+
+### Queue Configuration Options
+
+The script creates queues with these default properties:
+- **Durable**: `true` (queues survive broker restart)
+- **Auto-delete**: `false` (queues are not deleted when unused)
+- **Virtual Host**: `/` (default vhost)
+
+You can customize these with command-line options:
+```bash
+./initialize-queues.sh --durable false --auto-delete true
+```
+
+### Verifying Queue Creation
+
+After running the script, verify queues were created:
+
+1. **Via Management UI**:
+   - Go to `http://rabbitmq.aunlocked.com`
+   - Navigate to the "Queues" tab
+
+2. **Via API**:
+   ```bash
+   curl -u rabbitmq-admin:pedro http://rabbitmq.aunlocked.com:15672/api/queues
+   ```
+
+3. **Via kubectl**:
+   ```bash
+   kubectl exec -it rabbitmq-coffee-0 -n coffee-cluster-services -- \
+     rabbitmqctl list_queues name durable auto_delete
+   ```
 
 ## Secret Management
 
